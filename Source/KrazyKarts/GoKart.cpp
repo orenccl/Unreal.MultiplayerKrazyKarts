@@ -19,9 +19,14 @@ void AGoKart::BeginPlay()
 void AGoKart::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-	// Moving
-	FVector Translation = Velocity * DeltaTime;
-	AddActorWorldOffset(Translation, true);
+
+	FVector Force = GetActorForwardVector() * MaxDrivingForce * Throttle;
+	// F = ma
+	FVector Acceleration = Force / Mass;
+
+	Velocity += Acceleration * DeltaTime;
+
+	UpdateLocationFromVelocity(DeltaTime);
 }
 
 // Called to bind functionality to input
@@ -34,6 +39,20 @@ void AGoKart::SetupPlayerInputComponent(UInputComponent *PlayerInputComponent)
 
 void AGoKart::MoveFword(float AxisValue)
 {
-	// 20 meter * 100 centimeter(world use centimeter for a unit)
-	Velocity = GetActorForwardVector() * 20 * 100 * AxisValue;
+	Throttle = AxisValue;
+}
+
+void AGoKart::UpdateLocationFromVelocity(float DeltaTime)
+{
+	// Moving translation (Velocity * 100 convert from m to cm, unreal world use cm for unit)
+	FVector Translation = Velocity * 100 * DeltaTime;
+
+	FHitResult OutSweepHitResult;
+	AddActorWorldOffset(Translation, true, &OutSweepHitResult);
+
+	// Clear velocity if hit object
+	if (OutSweepHitResult.IsValidBlockingHit())
+	{
+		Velocity = FVector::ZeroVector;
+	}
 }
