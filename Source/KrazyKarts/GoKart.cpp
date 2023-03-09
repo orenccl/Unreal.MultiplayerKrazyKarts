@@ -26,6 +26,7 @@ void AGoKart::Tick(float DeltaTime)
 
 	Velocity += Acceleration * DeltaTime;
 
+	ApplyRotation(DeltaTime);
 	UpdateLocationFromVelocity(DeltaTime);
 }
 
@@ -35,11 +36,17 @@ void AGoKart::SetupPlayerInputComponent(UInputComponent *PlayerInputComponent)
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
 	// Bind event
 	PlayerInputComponent->BindAxis("MoveFword", this, &AGoKart::MoveFword);
+	PlayerInputComponent->BindAxis("MoveRight", this, &AGoKart::MoveRight);
 }
 
 void AGoKart::MoveFword(float AxisValue)
 {
 	Throttle = AxisValue;
+}
+
+void AGoKart::MoveRight(float AxisValue)
+{
+	SteeringThrow = AxisValue;
 }
 
 void AGoKart::UpdateLocationFromVelocity(float DeltaTime)
@@ -55,4 +62,13 @@ void AGoKart::UpdateLocationFromVelocity(float DeltaTime)
 	{
 		Velocity = FVector::ZeroVector;
 	}
+}
+
+void AGoKart::ApplyRotation(float DeltaTime)
+{
+	float RotationAngle = MaxDegreePerSecond * DeltaTime * SteeringThrow;
+
+	FQuat RotationDelta(GetActorUpVector(), FMath::DegreesToRadians(RotationAngle));
+	Velocity = RotationDelta.RotateVector(Velocity);
+	AddActorWorldRotation(RotationDelta, true);
 }

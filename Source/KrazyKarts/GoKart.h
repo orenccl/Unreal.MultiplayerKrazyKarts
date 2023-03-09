@@ -35,13 +35,24 @@ private:
 	UPROPERTY(EditAnywhere)
 	float MaxDrivingForce = 10000;
 
+	// The number of degrees rotated per second at full throw (degree/s)
+	UPROPERTY(EditAnywhere)
+	float MaxDegreePerSecond = 90;
+
 	// Moving velocity, update by axis binding event (m)
 	FVector Velocity;
 
 	float Throttle;
 
+	float SteeringThrow;
+
 	// Move forward and backword
 	void MoveFword(float AxisValue);
 
+	// Move right and left
+	void MoveRight(float AxisValue);
+
 	void UpdateLocationFromVelocity(float DeltaTime);
+
+	void ApplyRotation(float DeltaTime);
 };
