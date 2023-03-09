@@ -35,13 +35,13 @@ private:
 	UPROPERTY(EditAnywhere)
 	float MaxDrivingForce = 10000;
 
-	// The number of degrees rotated per second at full throw (degree/s)
+	// Minimum radius of the car turning circlr at full lock (m)
 	UPROPERTY(EditAnywhere)
-	float MaxDegreePerSecond = 90;
+	float MinTurningRadius = 10;
 
 	// Higher means more drag (kg/m) AirResistance = -Speed^2 * DragCoefficient. 10000 / 25^2 = 16
 	UPROPERTY(EditAnywhere)
-	float DragCoefficient = 2.7;
+	float DragCoefficient = 6.25;
 
 	/**
 	 * Higher means more rolling resistance. RollingResistance = -NormalForce * RollingCoefficient. NormalForce = m*g

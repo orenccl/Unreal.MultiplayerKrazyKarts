@@ -70,9 +70,12 @@ void AGoKart::UpdateLocationFromVelocity(float DeltaTime)
 
 void AGoKart::ApplyRotation(float DeltaTime)
 {
-	float RotationAngle = MaxDegreePerSecond * DeltaTime * SteeringThrow;
+	// dX
+	float DeltaLocation = FVector::DotProduct(GetActorForwardVector(), Velocity) * DeltaTime;
+	// dCita = dX / r
+	float RotationAngle = DeltaLocation / MinTurningRadius * SteeringThrow;
+	FQuat RotationDelta(GetActorUpVector(), RotationAngle);
 
-	FQuat RotationDelta(GetActorUpVector(), FMath::DegreesToRadians(RotationAngle));
 	Velocity = RotationDelta.RotateVector(Velocity);
 	AddActorWorldRotation(RotationDelta, true);
 }
