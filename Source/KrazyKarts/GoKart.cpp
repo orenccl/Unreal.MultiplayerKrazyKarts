@@ -28,6 +28,9 @@ void AGoKart::GetLifetimeReplicatedProps(TArray<FLifetimeProperty> &OutLifetimeP
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	DOREPLIFETIME(AGoKart, ReplicatedTransform);
+	DOREPLIFETIME(AGoKart, Velocity);
+	DOREPLIFETIME(AGoKart, Throttle);
+	DOREPLIFETIME(AGoKart, SteeringThrow);
 }
 
 // Called every frame
@@ -35,20 +38,20 @@ void AGoKart::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
+	FVector Force = GetActorForwardVector() * MaxDrivingForce * Throttle;
+	Force += GetAirResistance();
+	Force += GetRollingResistance();
+
+	// F = ma
+	FVector Acceleration = Force / Mass;
+
+	Velocity += Acceleration * DeltaTime;
+
+	UpdateLocationFromVelocity(DeltaTime);
+	ApplyRotation(DeltaTime);
+
 	if (HasAuthority())
 	{
-		FVector Force = GetActorForwardVector() * MaxDrivingForce * Throttle;
-		Force += GetAirResistance();
-		Force += GetRollingResistance();
-
-		// F = ma
-		FVector Acceleration = Force / Mass;
-
-		Velocity += Acceleration * DeltaTime;
-
-		UpdateLocationFromVelocity(DeltaTime);
-		ApplyRotation(DeltaTime);
-
 		ReplicatedTransform = GetActorTransform();
 	}
 
