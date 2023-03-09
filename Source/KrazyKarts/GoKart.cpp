@@ -1,6 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "GoKart.h"
+#include "Engine/World.h"
 
 // Sets default values
 AGoKart::AGoKart()
@@ -21,6 +22,9 @@ void AGoKart::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 
 	FVector Force = GetActorForwardVector() * MaxDrivingForce * Throttle;
+	Force += GetAirResistance();
+	Force += GetRollingResistance();
+
 	// F = ma
 	FVector Acceleration = Force / Mass;
 
@@ -71,4 +75,18 @@ void AGoKart::ApplyRotation(float DeltaTime)
 	FQuat RotationDelta(GetActorUpVector(), FMath::DegreesToRadians(RotationAngle));
 	Velocity = RotationDelta.RotateVector(Velocity);
 	AddActorWorldRotation(RotationDelta, true);
+}
+
+FVector AGoKart::GetAirResistance()
+{
+	return -Velocity.GetSafeNormal() * Velocity.SizeSquared() * DragCoefficient;
+}
+
+FVector AGoKart::GetRollingResistance()
+{
+	// Convert to meter
+	float AccelerationDueToGravity = -GetWorld()->GetGravityZ() / 100;
+	// F = m*g
+	float NormalForce = Mass * AccelerationDueToGravity;
+	return -Velocity.GetSafeNormal() * NormalForce * RollingCoefficient;
 }

@@ -39,6 +39,17 @@ private:
 	UPROPERTY(EditAnywhere)
 	float MaxDegreePerSecond = 90;
 
+	// Higher means more drag (kg/m) AirResistance = -Speed^2 * DragCoefficient. 10000 / 25^2 = 16
+	UPROPERTY(EditAnywhere)
+	float DragCoefficient = 2.7;
+
+	/**
+	 * Higher means more rolling resistance. RollingResistance = -NormalForce * RollingCoefficient. NormalForce = m*g
+	 * RollingCoefficient value could refer to wiki
+	 */
+	UPROPERTY(EditAnywhere)
+	float RollingCoefficient = 0.015;
+
 	// Moving velocity, update by axis binding event (m)
 	FVector Velocity;
 
@@ -55,4 +66,8 @@ private:
 	void UpdateLocationFromVelocity(float DeltaTime);
 
 	void ApplyRotation(float DeltaTime);
+
+	FVector GetAirResistance();
+
+	FVector GetRollingResistance();
 };
