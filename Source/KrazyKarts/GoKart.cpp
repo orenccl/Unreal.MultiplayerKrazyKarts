@@ -3,12 +3,14 @@
 #include "GoKart.h"
 
 #include "Engine/World.h"
+#include "Net/UnrealNetwork.h"
 
 // Sets default values
 AGoKart::AGoKart()
 {
 	// Set this pawn to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
+	bReplicates = true;
 }
 
 // Called when the game starts or when spawned
@@ -17,22 +19,40 @@ void AGoKart::BeginPlay()
 	Super::BeginPlay();
 }
 
+void AGoKart::GetLifetimeReplicatedProps(TArray<FLifetimeProperty> &OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	DOREPLIFETIME(AGoKart, ReplicatesdLocation);
+	DOREPLIFETIME(AGoKart, ReplicatesdRotation);
+}
+
 // Called every frame
 void AGoKart::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	FVector Force = GetActorForwardVector() * MaxDrivingForce * Throttle;
-	Force += GetAirResistance();
-	Force += GetRollingResistance();
+	if (HasAuthority())
+	{
+		FVector Force = GetActorForwardVector() * MaxDrivingForce * Throttle;
+		Force += GetAirResistance();
+		Force += GetRollingResistance();
 
-	// F = ma
-	FVector Acceleration = Force / Mass;
+		// F = ma
+		FVector Acceleration = Force / Mass;
 
-	Velocity += Acceleration * DeltaTime;
+		Velocity += Acceleration * DeltaTime;
 
-	ApplyRotation(DeltaTime);
-	UpdateLocationFromVelocity(DeltaTime);
+		UpdateLocationFromVelocity(DeltaTime);
+		ReplicatesdLocation = GetActorLocation();
+
+		ApplyRotation(DeltaTime);
+		ReplicatesdRotation = GetActorRotation();
+	}
+	else
+	{
+		SetActorLocation(ReplicatesdLocation);
+		SetActorRotation(ReplicatesdRotation);
+	}
 
 	DrawDebugString(GetWorld(), FVector(0, 0, 100), UEnum::GetValueAsString(GetLocalRole()), this, FColor::White, DeltaTime);
 }

@@ -57,6 +57,12 @@ private:
 
 	float SteeringThrow;
 
+	UPROPERTY(replicated)
+	FVector ReplicatesdLocation;
+
+	UPROPERTY(replicated)
+	FRotator ReplicatesdRotation;
+
 	// Move forward and backword
 	void MoveForward(float AxisValue);
 
