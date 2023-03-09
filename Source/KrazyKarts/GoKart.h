@@ -57,11 +57,11 @@ private:
 
 	float SteeringThrow;
 
-	UPROPERTY(replicated)
-	FVector ReplicatesdLocation;
+	UPROPERTY(ReplicatedUsing = OnRep_ReplicatedTransform)
+	FTransform ReplicatedTransform;
 
-	UPROPERTY(replicated)
-	FRotator ReplicatesdRotation;
+	UFUNCTION()
+	void OnRep_ReplicatedTransform();
 
 	// Move forward and backword
 	void MoveForward(float AxisValue);

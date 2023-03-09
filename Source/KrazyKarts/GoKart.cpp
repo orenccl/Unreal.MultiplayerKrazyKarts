@@ -17,13 +17,17 @@ AGoKart::AGoKart()
 void AGoKart::BeginPlay()
 {
 	Super::BeginPlay();
+
+	if (HasAuthority())
+	{
+		NetUpdateFrequency = 1;
+	}
 }
 
 void AGoKart::GetLifetimeReplicatedProps(TArray<FLifetimeProperty> &OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-	DOREPLIFETIME(AGoKart, ReplicatesdLocation);
-	DOREPLIFETIME(AGoKart, ReplicatesdRotation);
+	DOREPLIFETIME(AGoKart, ReplicatedTransform);
 }
 
 // Called every frame
@@ -43,18 +47,17 @@ void AGoKart::Tick(float DeltaTime)
 		Velocity += Acceleration * DeltaTime;
 
 		UpdateLocationFromVelocity(DeltaTime);
-		ReplicatesdLocation = GetActorLocation();
-
 		ApplyRotation(DeltaTime);
-		ReplicatesdRotation = GetActorRotation();
-	}
-	else
-	{
-		SetActorLocation(ReplicatesdLocation);
-		SetActorRotation(ReplicatesdRotation);
+
+		ReplicatedTransform = GetActorTransform();
 	}
 
 	DrawDebugString(GetWorld(), FVector(0, 0, 100), UEnum::GetValueAsString(GetLocalRole()), this, FColor::White, DeltaTime);
+}
+
+void AGoKart::OnRep_ReplicatedTransform()
+{
+	SetActorTransform(ReplicatedTransform);
 }
 
 // Called to bind functionality to input
