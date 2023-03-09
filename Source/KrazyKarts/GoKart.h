@@ -58,10 +58,16 @@ private:
 	float SteeringThrow;
 
 	// Move forward and backword
-	void MoveFword(float AxisValue);
+	void MoveForward(float AxisValue);
+
+	UFUNCTION(Server, Reliable, WithValidation) // ServerRPC
+	void Server_MoveForward(float AxisValue);
 
 	// Move right and left
 	void MoveRight(float AxisValue);
+
+	UFUNCTION(Server, Reliable, WithValidation) // ServerRPC
+	void Server_MoveRight(float AxisValue);
 
 	void UpdateLocationFromVelocity(float DeltaTime);
 

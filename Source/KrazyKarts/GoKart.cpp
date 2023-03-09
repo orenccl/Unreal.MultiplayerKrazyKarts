@@ -1,6 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "GoKart.h"
+
 #include "Engine/World.h"
 
 // Sets default values
@@ -32,6 +33,8 @@ void AGoKart::Tick(float DeltaTime)
 
 	ApplyRotation(DeltaTime);
 	UpdateLocationFromVelocity(DeltaTime);
+
+	DrawDebugString(GetWorld(), FVector(0, 0, 100), UEnum::GetValueAsString(GetLocalRole()), this, FColor::White, DeltaTime);
 }
 
 // Called to bind functionality to input
@@ -39,18 +42,42 @@ void AGoKart::SetupPlayerInputComponent(UInputComponent *PlayerInputComponent)
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
 	// Bind event
-	PlayerInputComponent->BindAxis("MoveFword", this, &AGoKart::MoveFword);
+	PlayerInputComponent->BindAxis("MoveForward", this, &AGoKart::MoveForward);
 	PlayerInputComponent->BindAxis("MoveRight", this, &AGoKart::MoveRight);
 }
 
-void AGoKart::MoveFword(float AxisValue)
+void AGoKart::MoveForward(float AxisValue)
 {
 	Throttle = AxisValue;
+	Server_MoveForward(AxisValue);
+}
+
+// Only get called on server.
+void AGoKart::Server_MoveForward_Implementation(float AxisValue)
+{
+	Throttle = AxisValue;
+}
+
+// Only get called on server, check if it cheat
+bool AGoKart::Server_MoveForward_Validate(float AxisValue)
+{
+	return FMath::Abs(AxisValue) <= 1;
 }
 
 void AGoKart::MoveRight(float AxisValue)
 {
 	SteeringThrow = AxisValue;
+	Server_MoveRight(AxisValue);
+}
+
+void AGoKart::Server_MoveRight_Implementation(float AxisValue)
+{
+	SteeringThrow = AxisValue;
+}
+
+bool AGoKart::Server_MoveRight_Validate(float AxisValue)
+{
+	return FMath::Abs(AxisValue) <= 1;
 }
 
 void AGoKart::UpdateLocationFromVelocity(float DeltaTime)
