@@ -27,10 +27,7 @@ void AGoKart::BeginPlay()
 void AGoKart::GetLifetimeReplicatedProps(TArray<FLifetimeProperty> &OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-	DOREPLIFETIME(AGoKart, ReplicatedTransform);
-	DOREPLIFETIME(AGoKart, Velocity);
-	DOREPLIFETIME(AGoKart, Throttle);
-	DOREPLIFETIME(AGoKart, SteeringThrow);
+	DOREPLIFETIME(AGoKart, ServerState);
 }
 
 // Called every frame
@@ -38,29 +35,18 @@ void AGoKart::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	FVector Force = GetActorForwardVector() * MaxDrivingForce * Throttle;
-	Force += GetAirResistance();
-	Force += GetRollingResistance();
-
-	// F = ma
-	FVector Acceleration = Force / Mass;
-
-	Velocity += Acceleration * DeltaTime;
-
-	UpdateLocationFromVelocity(DeltaTime);
-	ApplyRotation(DeltaTime);
-
-	if (HasAuthority())
+	if (IsLocallyControlled())
 	{
-		ReplicatedTransform = GetActorTransform();
+		FGoKartMove Move;
+		Move.DeltaTime = DeltaTime;
+		Move.Throttle = Throttle;
+		Move.SteeringThrow = SteeringThrow;
+		// TODO: Move.Time
+		Server_SendMove(Move);
+
+		// FIXME: Bug: Server also called this
+		SimulateMove(Move);
 	}
-
-	DrawDebugString(GetWorld(), FVector(0, 0, 100), UEnum::GetValueAsString(GetLocalRole()), this, FColor::White, DeltaTime);
-}
-
-void AGoKart::OnRep_ReplicatedTransform()
-{
-	SetActorTransform(ReplicatedTransform);
 }
 
 // Called to bind functionality to input
@@ -72,38 +58,52 @@ void AGoKart::SetupPlayerInputComponent(UInputComponent *PlayerInputComponent)
 	PlayerInputComponent->BindAxis("MoveRight", this, &AGoKart::MoveRight);
 }
 
-void AGoKart::MoveForward(float AxisValue)
-{
-	Throttle = AxisValue;
-	Server_MoveForward(AxisValue);
-}
-
 // Only get called on server.
-void AGoKart::Server_MoveForward_Implementation(float AxisValue)
+void AGoKart::Server_SendMove_Implementation(FGoKartMove Move)
 {
-	Throttle = AxisValue;
+	SimulateMove(Move);
+	ServerState.LastMove = Move;
+	ServerState.Velocity = Velocity;
+	ServerState.Transform = GetActorTransform();
 }
 
 // Only get called on server, check if it cheat
-bool AGoKart::Server_MoveForward_Validate(float AxisValue)
+bool AGoKart::Server_SendMove_Validate(FGoKartMove Move)
 {
-	return FMath::Abs(AxisValue) <= 1;
+	return FMath::Abs(Move.Throttle) <= 1 && FMath::Abs(Move.SteeringThrow) <= 1;
+}
+
+void AGoKart::OnRep_ReplicatedServerState()
+{
+	SetActorTransform(ServerState.Transform);
+	Velocity = ServerState.Velocity;
+}
+
+void AGoKart::SimulateMove(FGoKartMove Move)
+{
+	FVector Force = GetActorForwardVector() * MaxDrivingForce * Move.Throttle;
+	Force += GetAirResistance();
+	Force += GetRollingResistance();
+
+	// F = ma
+	FVector Acceleration = Force / Mass;
+
+	Velocity += Acceleration * Move.DeltaTime;
+
+	UpdateLocationFromVelocity(Move.DeltaTime);
+	ApplyRotation(Move.SteeringThrow, Move.DeltaTime);
+
+	DrawDebugString(GetWorld(), FVector(0, 0, 100), UEnum::GetValueAsString(GetLocalRole()), this, FColor::White, Move.DeltaTime);
+}
+
+void AGoKart::MoveForward(float AxisValue)
+{
+	Throttle = AxisValue;
 }
 
 void AGoKart::MoveRight(float AxisValue)
 {
 	SteeringThrow = AxisValue;
-	Server_MoveRight(AxisValue);
-}
-
-void AGoKart::Server_MoveRight_Implementation(float AxisValue)
-{
-	SteeringThrow = AxisValue;
-}
-
-bool AGoKart::Server_MoveRight_Validate(float AxisValue)
-{
-	return FMath::Abs(AxisValue) <= 1;
 }
 
 void AGoKart::UpdateLocationFromVelocity(float DeltaTime)
@@ -121,12 +121,12 @@ void AGoKart::UpdateLocationFromVelocity(float DeltaTime)
 	}
 }
 
-void AGoKart::ApplyRotation(float DeltaTime)
+void AGoKart::ApplyRotation(float InSteeringThrow, float DeltaTime)
 {
 	// dX
 	float DeltaLocation = FVector::DotProduct(GetActorForwardVector(), Velocity) * DeltaTime;
 	// dCita = dX / r
-	float RotationAngle = DeltaLocation / MinTurningRadius * SteeringThrow;
+	float RotationAngle = DeltaLocation / MinTurningRadius * InSteeringThrow;
 	FQuat RotationDelta(GetActorUpVector(), RotationAngle);
 
 	Velocity = RotationDelta.RotateVector(Velocity);
