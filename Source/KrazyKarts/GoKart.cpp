@@ -2,8 +2,6 @@
 
 #include "GoKart.h"
 
-#include "Engine/World.h"
-
 // Sets default values
 AGoKart::AGoKart()
 {

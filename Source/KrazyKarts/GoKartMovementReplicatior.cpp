@@ -2,7 +2,6 @@
 
 #include "GoKartMovementReplicatior.h"
 #include "Net/UnrealNetwork.h"
-#include "GameFramework/GameStateBase.h"
 
 // Sets default values for this component's properties
 UGoKartMovementReplicatior::UGoKartMovementReplicatior()
