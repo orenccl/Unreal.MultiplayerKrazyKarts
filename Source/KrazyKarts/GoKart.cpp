@@ -38,20 +38,30 @@ void AGoKart::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	if (IsLocallyControlled())
+	// We are the client and in control of the pawn
+	if (GetLocalRole() == ROLE_AutonomousProxy)
 	{
 		FGoKartMove Move = CreateMove(DeltaTime);
+		// Simultaneous simulate move(Will run ahead of the server)
+		SimulateMove(Move);
+		// Record move
+		UnacknowlegedMoves.Add(Move);
 		// Send move information to server
 		Server_SendMove(Move);
-		// Exclude server(server doesn't need to sync with self)
-		if (!HasAuthority())
-		{
-			// Client record move
-			UnacknowlegedMoves.Add(Move);
-			// Client simultaneous simulate move(Will run ahead of the server)
-			SimulateMove(Move);
-		}
 	}
+	// We are the server and in control of the pawn
+	else if (GetLocalRole() == ROLE_Authority && IsLocallyControlled())
+	{
+		FGoKartMove Move = CreateMove(DeltaTime);
+		Server_SendMove(Move);
+	}
+	// We are the client and control by server
+	else if (GetLocalRole() == ROLE_SimulatedProxy)
+	{
+		SimulateMove(ServerState.LastMove);
+	}
+
+	DrawDebugString(GetWorld(), FVector(0, 0, 100), UEnum::GetValueAsString(GetLocalRole()), this, FColor::White, DeltaTime);
 }
 
 // Called to bind functionality to input
@@ -84,7 +94,7 @@ void AGoKart::OnRep_ReplicatedServerState()
 	// Sync with server
 	SetActorTransform(ServerState.Transform);
 	Velocity = ServerState.Velocity;
-	
+
 	ClearAcknowlegedMoves(ServerState.LastMove);
 
 	// Then replay move, still keep ahead of server
@@ -107,8 +117,6 @@ void AGoKart::SimulateMove(const FGoKartMove &Move)
 
 	UpdateLocationFromVelocity(Move.DeltaTime);
 	ApplyRotation(Move.SteeringThrow, Move.DeltaTime);
-
-	DrawDebugString(GetWorld(), FVector(0, 0, 100), UEnum::GetValueAsString(GetLocalRole()), this, FColor::White, Move.DeltaTime);
 }
 
 FGoKartMove AGoKart::CreateMove(float DeltaTime)
