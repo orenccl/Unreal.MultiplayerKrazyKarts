@@ -4,25 +4,8 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Pawn.h"
+#include "GoKartMovementComponent.h"
 #include "GoKart.generated.h"
-
-USTRUCT()
-struct FGoKartMove
-{
-	GENERATED_BODY()
-
-	UPROPERTY()
-	float Throttle;
-
-	UPROPERTY()
-	float SteeringThrow;
-
-	UPROPERTY()
-	float DeltaTime;
-
-	UPROPERTY()
-	float Time;
-};
 
 USTRUCT()
 struct FGoKartState
@@ -60,37 +43,8 @@ public:
 	virtual void SetupPlayerInputComponent(class UInputComponent *PlayerInputComponent) override;
 
 private:
-	// The mass of the car (kg)
-	UPROPERTY(EditAnywhere)
-	float Mass = 1000;
-
-	// The force applied to the car when the throttle is fully down (N)
-	UPROPERTY(EditAnywhere)
-	float MaxDrivingForce = 10000;
-
-	// Minimum radius of the car turning circlr at full lock (m)
-	UPROPERTY(EditAnywhere)
-	float MinTurningRadius = 10;
-
-	// Higher means more drag (kg/m) AirResistance = -Speed^2 * DragCoefficient. 10000 / 25^2 = 16
-	UPROPERTY(EditAnywhere)
-	float DragCoefficient = 6.25;
-
-	/**
-	 * Higher means more rolling resistance. RollingResistance = -NormalForce * RollingCoefficient. NormalForce = m*g
-	 * RollingCoefficient value could refer to wiki
-	 */
-	UPROPERTY(EditAnywhere)
-	float RollingCoefficient = 0.015;
-
 	UPROPERTY(ReplicatedUsing = OnRep_ReplicatedServerState)
 	FGoKartState ServerState;
-
-	float Throttle;
-
-	float SteeringThrow;
-
-	FVector Velocity;
 
 	// Moves not acknowlege by server yet
 	TArray<FGoKartMove> UnacknowlegedMoves;
@@ -101,10 +55,6 @@ private:
 	UFUNCTION()
 	void OnRep_ReplicatedServerState();
 
-	void SimulateMove(const FGoKartMove &Move);
-
-	FGoKartMove CreateMove(float DeltaTime);
-
 	void ClearAcknowlegedMoves(FGoKartMove LastMove);
 
 	// Move forward and backword
@@ -112,11 +62,50 @@ private:
 	// Move right and left
 	void MoveRight(float AxisValue);
 
-	void UpdateLocationFromVelocity(float DeltaTime);
+	UPROPERTY(EditAnywhere)
+	UGoKartMovementComponent* MovementComponent;
+	//
+	//
+	//
 
-	void ApplyRotation(float InSteeringThrow, float DeltaTime);
+	// void SimulateMove(const FGoKartMove &Move);
 
-	FVector GetAirResistance();
+	// FGoKartMove CreateMove(float DeltaTime);
 
-	FVector GetRollingResistance();
+	// FVector GetAirResistance();
+
+	// FVector GetRollingResistance();
+
+	// void UpdateLocationFromVelocity(float DeltaTime);
+
+	// void ApplyRotation(float InSteeringThrow, float DeltaTime);
+
+	// // The mass of the car (kg)
+	// UPROPERTY(EditAnywhere)
+	// float Mass = 1000;
+
+	// // The force applied to the car when the throttle is fully down (N)
+	// UPROPERTY(EditAnywhere)
+	// float MaxDrivingForce = 10000;
+
+	// // Minimum radius of the car turning circlr at full lock (m)
+	// UPROPERTY(EditAnywhere)
+	// float MinTurningRadius = 10;
+
+	// // Higher means more drag (kg/m) AirResistance = -Speed^2 * DragCoefficient. 10000 / 25^2 = 16
+	// UPROPERTY(EditAnywhere)
+	// float DragCoefficient = 6.25;
+
+	// /**
+	//  * Higher means more rolling resistance. RollingResistance = -NormalForce * RollingCoefficient. NormalForce = m*g
+	//  * RollingCoefficient value could refer to wiki
+	//  */
+	// UPROPERTY(EditAnywhere)
+	// float RollingCoefficient = 0.015;
+
+	// float Throttle;
+
+	// float SteeringThrow;
+
+	// FVector Velocity;
 };
