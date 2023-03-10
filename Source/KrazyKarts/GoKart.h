@@ -92,6 +92,8 @@ private:
 
 	FVector Velocity;
 
+	TArray<FGoKartMove> UnacknowlegedMoves;
+
 	UFUNCTION(Server, Reliable, WithValidation) // ServerRPC
 	void Server_SendMove(FGoKartMove Move);
 
@@ -100,6 +102,10 @@ private:
 
 	void SimulateMove(FGoKartMove Move);
 
+	FGoKartMove CreateMove(float DeltaTime);
+
+	void ClearAcknowlegedMoves(FGoKartMove LastMove);
+
 	// Move forward and backword
 	void MoveForward(float AxisValue);
 	// Move right and left
@@ -107,7 +113,7 @@ private:
 
 	void UpdateLocationFromVelocity(float DeltaTime);
 
-	void ApplyRotation(float InSteeringThrow,float DeltaTime);
+	void ApplyRotation(float InSteeringThrow, float DeltaTime);
 
 	FVector GetAirResistance();
 
