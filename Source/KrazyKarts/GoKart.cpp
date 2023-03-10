@@ -4,6 +4,7 @@
 
 #include "Engine/World.h"
 #include "Net/UnrealNetwork.h"
+#include "GameFramework/GameStateBase.h"
 
 // Sets default values
 AGoKart::AGoKart()
@@ -18,6 +19,7 @@ void AGoKart::BeginPlay()
 {
 	Super::BeginPlay();
 
+	// Server net update frequency 1 per second.
 	if (HasAuthority())
 	{
 		NetUpdateFrequency = 1;
@@ -27,6 +29,7 @@ void AGoKart::BeginPlay()
 void AGoKart::GetLifetimeReplicatedProps(TArray<FLifetimeProperty> &OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	// Bind Replicate
 	DOREPLIFETIME(AGoKart, ServerState);
 }
 
@@ -38,13 +41,14 @@ void AGoKart::Tick(float DeltaTime)
 	if (IsLocallyControlled())
 	{
 		FGoKartMove Move = CreateMove(DeltaTime);
-
+		// Send move information to server
 		Server_SendMove(Move);
-
+		// Exclude server(server doesn't need to sync with self)
 		if (!HasAuthority())
 		{
-			UE_LOG(LogTemp, Warning, TEXT("Q length: %d"), UnacknowlegedMoves.Num());
+			// Client record move
 			UnacknowlegedMoves.Add(Move);
+			// Client simultaneous simulate move(Will run ahead of the server)
 			SimulateMove(Move);
 		}
 	}
@@ -63,6 +67,7 @@ void AGoKart::SetupPlayerInputComponent(UInputComponent *PlayerInputComponent)
 void AGoKart::Server_SendMove_Implementation(FGoKartMove Move)
 {
 	SimulateMove(Move);
+	// Update server state to clients
 	ServerState.LastMove = Move;
 	ServerState.Velocity = Velocity;
 	ServerState.Transform = GetActorTransform();
@@ -76,13 +81,20 @@ bool AGoKart::Server_SendMove_Validate(FGoKartMove Move)
 
 void AGoKart::OnRep_ReplicatedServerState()
 {
+	// Sync with server
 	SetActorTransform(ServerState.Transform);
 	Velocity = ServerState.Velocity;
-
+	
 	ClearAcknowlegedMoves(ServerState.LastMove);
+
+	// Then replay move, still keep ahead of server
+	for (const auto &Move : UnacknowlegedMoves)
+	{
+		SimulateMove(Move);
+	}
 }
 
-void AGoKart::SimulateMove(FGoKartMove Move)
+void AGoKart::SimulateMove(const FGoKartMove &Move)
 {
 	FVector Force = GetActorForwardVector() * MaxDrivingForce * Move.Throttle;
 	Force += GetAirResistance();
@@ -105,7 +117,7 @@ FGoKartMove AGoKart::CreateMove(float DeltaTime)
 	Move.DeltaTime = DeltaTime;
 	Move.Throttle = Throttle;
 	Move.SteeringThrow = SteeringThrow;
-	Move.Time = GetWorld()->TimeSeconds;
+	Move.Time = GetWorld()->GetGameState()->GetServerWorldTimeSeconds();
 
 	return Move;
 }
@@ -114,7 +126,7 @@ void AGoKart::ClearAcknowlegedMoves(FGoKartMove LastMove)
 {
 	TArray<FGoKartMove> NewMoves;
 
-	for (auto Move : UnacknowlegedMoves)
+	for (const auto &Move : UnacknowlegedMoves)
 	{
 		if (Move.Time > LastMove.Time)
 		{

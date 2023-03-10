@@ -92,6 +92,7 @@ private:
 
 	FVector Velocity;
 
+	// Moves not acknowlege by server yet
 	TArray<FGoKartMove> UnacknowlegedMoves;
 
 	UFUNCTION(Server, Reliable, WithValidation) // ServerRPC
@@ -100,7 +101,7 @@ private:
 	UFUNCTION()
 	void OnRep_ReplicatedServerState();
 
-	void SimulateMove(FGoKartMove Move);
+	void SimulateMove(const FGoKartMove &Move);
 
 	FGoKartMove CreateMove(float DeltaTime);
 
