@@ -34,9 +34,9 @@ private:
 	// Move right and left
 	void MoveRight(float AxisValue);
 
-	UPROPERTY(VisibleAnywhere)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	UGoKartMovementComponent *MovementComponent;
 
-	UPROPERTY(VisibleAnywhere)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	UGoKartMovementReplicatior *MovementReplicatior;
 };

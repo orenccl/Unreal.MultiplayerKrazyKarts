@@ -65,6 +65,11 @@ public:
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction) override;
 
 private:
+	UPROPERTY()
+	USceneComponent* MeshOffsetRoot;
+	UFUNCTION(BlueprintCallable)
+	void SetMeshOffsetRoot(USceneComponent* Root) {MeshOffsetRoot = Root;}
+
 	APawn *Owner;
 	UGoKartMovementComponent *MovementComponent;
 
@@ -97,7 +102,7 @@ private:
 
 	FHermiteCubicSpline CreateSpline();
 	float VelocityToDerivative();
-	void InterpolateLocation(const FHermiteCubicSpline& Spline, float LerpRatio);
-	void InterpolateVelocity(const FHermiteCubicSpline& Spline, float LerpRatio);
+	void InterpolateLocation(const FHermiteCubicSpline &Spline, float LerpRatio);
+	void InterpolateVelocity(const FHermiteCubicSpline &Spline, float LerpRatio);
 	void InterpolateRotation(float LerpRatio);
 };
