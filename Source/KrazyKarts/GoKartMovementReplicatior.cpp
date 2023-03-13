@@ -2,6 +2,7 @@
 
 #include "GoKartMovementReplicatior.h"
 #include "Net/UnrealNetwork.h"
+#include "GameFramework/GameStateBase.h"
 
 // Sets default values for this component's properties
 UGoKartMovementReplicatior::UGoKartMovementReplicatior()
@@ -144,6 +145,7 @@ void UGoKartMovementReplicatior::Server_SendMove_Implementation(FGoKartMove Move
 	if (MovementComponent == nullptr)
 		return;
 
+	ClientSimulatedTime += Move.DeltaTime;
 	MovementComponent->SimulateMove(Move);
 	UpdateServerState(Move);
 }
@@ -151,7 +153,21 @@ void UGoKartMovementReplicatior::Server_SendMove_Implementation(FGoKartMove Move
 // Only get called on server, check if it cheat
 bool UGoKartMovementReplicatior::Server_SendMove_Validate(FGoKartMove Move)
 {
-	return FMath::Abs(Move.Throttle) <= 1 && FMath::Abs(Move.SteeringThrow) <= 1;
+	float ProposedTime = ClientSimulatedTime + Move.DeltaTime;
+	bool ClientRuningAhead = ProposedTime > GetWorld()->GetGameState()->GetServerWorldTimeSeconds();
+	if (ClientRuningAhead)
+	{
+		UE_LOG(LogTemp, Error, TEXT("Client is running too fast."));
+		return false;
+	}
+
+	if (!Move.IsValid())
+	{
+		UE_LOG(LogTemp, Error, TEXT("Received invalid move."));
+		return false;
+	}
+
+	return true;
 }
 
 void UGoKartMovementReplicatior::OnRep_ReplicatedServerState()

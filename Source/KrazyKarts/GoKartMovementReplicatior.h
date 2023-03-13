@@ -85,6 +85,8 @@ private:
 	FTransform ClinetStartTransform;
 	FVector ClinetStartVelocity;
 
+	float ClientSimulatedTime;
+
 	UFUNCTION(Server, Reliable, WithValidation) // ServerRPC
 	void Server_SendMove(FGoKartMove Move);
 
