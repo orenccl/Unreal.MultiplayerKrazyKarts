@@ -49,14 +49,23 @@ private:
 	// Moves not acknowlege by server yet
 	TArray<FGoKartMove> UnacknowlegedMoves;
 
+	float ClientTimeSinceUpdate;
+	float ClientTimeBetweenLastUpdate;
+
+	FTransform ClinetStartTransform;
+
 	UFUNCTION(Server, Reliable, WithValidation) // ServerRPC
 	void Server_SendMove(FGoKartMove Move);
 
 	UFUNCTION()
 	void OnRep_ReplicatedServerState();
+	void AutonomousProxy_OnRep_ReplicatedServerState();
+	void SimulatedProxy_OnRep_ReplicatedServerState();
 
 	void ClearAcknowlegedMoves(FGoKartMove LastMove);
 
 	// Update server state to clients
-	void UpdateServerState(const FGoKartMove& Move);
+	void UpdateServerState(const FGoKartMove &Move);
+
+	void ClientTick(float DeltaTime);
 };

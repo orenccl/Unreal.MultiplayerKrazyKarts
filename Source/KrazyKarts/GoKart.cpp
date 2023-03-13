@@ -18,6 +18,8 @@ void AGoKart::BeginPlay()
 {
 	Super::BeginPlay();
 
+	SetReplicateMovement(false);
+
 	// Server net update frequency 1 per second.
 	if (HasAuthority())
 	{

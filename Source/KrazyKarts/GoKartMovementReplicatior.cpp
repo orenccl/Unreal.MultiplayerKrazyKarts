@@ -18,6 +18,9 @@ void UGoKartMovementReplicatior::BeginPlay()
 {
 	Super::BeginPlay();
 	Owner = Cast<APawn>(GetOwner());
+	if (Owner == nullptr)
+		return;
+
 	MovementComponent = Owner->FindComponentByClass<UGoKartMovementComponent>();
 }
 
@@ -47,16 +50,45 @@ void UGoKartMovementReplicatior::TickComponent(float DeltaTime, ELevelTick TickT
 	// We are the client and control by server
 	else if (GetOwnerRole() == ROLE_SimulatedProxy)
 	{
-		MovementComponent->SimulateMove(ServerState.LastMove);
+		ClientTick(DeltaTime);
 	}
 }
 
-void UGoKartMovementReplicatior::UpdateServerState(const FGoKartMove& Move)
+void UGoKartMovementReplicatior::UpdateServerState(const FGoKartMove &Move)
 {
+	if (Owner == nullptr)
+		return;
+
 	// Update server state to clients
 	ServerState.LastMove = Move;
 	ServerState.Velocity = MovementComponent->GetVelocity();
 	ServerState.Transform = Owner->GetActorTransform();
+}
+
+void UGoKartMovementReplicatior::ClientTick(float DeltaTime)
+{
+	if (Owner == nullptr)
+		return;
+
+	ClientTimeSinceUpdate += DeltaTime;
+
+	if (ClientTimeBetweenLastUpdate < KINDA_SMALL_NUMBER)
+	{
+		return;
+	}
+
+	FVector StartLocation = ClinetStartTransform.GetLocation();
+	FVector TargetLocation = ServerState.Transform.GetLocation();
+	float LerpRatio = ClientTimeSinceUpdate / ClientTimeBetweenLastUpdate;
+
+	FVector NewLocation = FMath::LerpStable(StartLocation, TargetLocation, LerpRatio);
+	Owner->SetActorLocation(NewLocation);
+
+	FQuat StartRotation = ClinetStartTransform.GetRotation();
+	FQuat TargetRotation = ServerState.Transform.GetRotation();
+
+	FQuat NewRotation = FQuat::Slerp(StartRotation, TargetRotation, LerpRatio);
+	Owner->SetActorRotation(NewRotation);
 }
 
 void UGoKartMovementReplicatior::GetLifetimeReplicatedProps(TArray<FLifetimeProperty> &OutLifetimeProps) const
@@ -84,6 +116,18 @@ bool UGoKartMovementReplicatior::Server_SendMove_Validate(FGoKartMove Move)
 
 void UGoKartMovementReplicatior::OnRep_ReplicatedServerState()
 {
+	if (GetOwnerRole() == ROLE_AutonomousProxy)
+	{
+		AutonomousProxy_OnRep_ReplicatedServerState();
+	}
+	else if (GetOwnerRole() == ROLE_SimulatedProxy)
+	{
+		SimulatedProxy_OnRep_ReplicatedServerState();
+	}
+}
+
+void UGoKartMovementReplicatior::AutonomousProxy_OnRep_ReplicatedServerState()
+{
 	if (MovementComponent == nullptr || Owner == nullptr)
 		return;
 
@@ -98,6 +142,17 @@ void UGoKartMovementReplicatior::OnRep_ReplicatedServerState()
 	{
 		MovementComponent->SimulateMove(Move);
 	}
+}
+
+void UGoKartMovementReplicatior::SimulatedProxy_OnRep_ReplicatedServerState()
+{
+	if (Owner == nullptr)
+		return;
+
+	ClientTimeBetweenLastUpdate = ClientTimeSinceUpdate;
+	ClientTimeSinceUpdate = 0;
+
+	ClinetStartTransform = Owner->GetTransform();
 }
 
 void UGoKartMovementReplicatior::ClearAcknowlegedMoves(FGoKartMove LastMove)
