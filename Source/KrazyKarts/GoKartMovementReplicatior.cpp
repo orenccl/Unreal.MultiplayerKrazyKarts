@@ -29,28 +29,34 @@ void UGoKartMovementReplicatior::TickComponent(float DeltaTime, ELevelTick TickT
 	if (MovementComponent == nullptr || Owner == nullptr)
 		return;
 
+	FGoKartMove LastMove = MovementComponent->GetLastMove();
+
 	// We are the client and in control of the pawn
 	if (GetOwnerRole() == ROLE_AutonomousProxy)
 	{
-		FGoKartMove Move = MovementComponent->CreateMove(DeltaTime);
-		// Simultaneous simulate move(Will run ahead of the server)
-		MovementComponent->SimulateMove(Move);
 		// Record move
-		UnacknowlegedMoves.Add(Move);
+		UnacknowlegedMoves.Add(LastMove);
 		// Send move information to server
-		Server_SendMove(Move);
+		Server_SendMove(LastMove);
 	}
 	// We are the server and in control of the pawn
 	else if (GetOwnerRole() == ROLE_Authority && Owner->IsLocallyControlled())
 	{
-		FGoKartMove Move = MovementComponent->CreateMove(DeltaTime);
-		Server_SendMove(Move);
+		UpdateServerState(LastMove);
 	}
 	// We are the client and control by server
 	else if (GetOwnerRole() == ROLE_SimulatedProxy)
 	{
 		MovementComponent->SimulateMove(ServerState.LastMove);
 	}
+}
+
+void UGoKartMovementReplicatior::UpdateServerState(const FGoKartMove& Move)
+{
+	// Update server state to clients
+	ServerState.LastMove = Move;
+	ServerState.Velocity = MovementComponent->GetVelocity();
+	ServerState.Transform = Owner->GetActorTransform();
 }
 
 void UGoKartMovementReplicatior::GetLifetimeReplicatedProps(TArray<FLifetimeProperty> &OutLifetimeProps) const
@@ -63,14 +69,11 @@ void UGoKartMovementReplicatior::GetLifetimeReplicatedProps(TArray<FLifetimeProp
 // Only get called on server.
 void UGoKartMovementReplicatior::Server_SendMove_Implementation(FGoKartMove Move)
 {
-	if (MovementComponent == nullptr || Owner == nullptr)
+	if (MovementComponent == nullptr)
 		return;
 
 	MovementComponent->SimulateMove(Move);
-	// Update server state to clients
-	ServerState.LastMove = Move;
-	ServerState.Velocity = MovementComponent->GetVelocity();
-	ServerState.Transform = Owner->GetActorTransform();
+	UpdateServerState(Move);
 }
 
 // Only get called on server, check if it cheat

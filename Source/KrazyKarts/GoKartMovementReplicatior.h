@@ -56,4 +56,7 @@ private:
 	void OnRep_ReplicatedServerState();
 
 	void ClearAcknowlegedMoves(FGoKartMove LastMove);
+
+	// Update server state to clients
+	void UpdateServerState(const FGoKartMove& Move);
 };

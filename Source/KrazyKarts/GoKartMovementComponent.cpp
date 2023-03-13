@@ -15,12 +15,24 @@ UGoKartMovementComponent::UGoKartMovementComponent()
 void UGoKartMovementComponent::BeginPlay()
 {
 	Super::BeginPlay();
+	Owner = Cast<APawn>(GetOwner());
 }
 
 // Called every frame
 void UGoKartMovementComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+
+	if (Owner == nullptr)
+		return;
+
+	// We are the client and in control of the pawn or We are the server and in control of the pawn
+	if (GetOwnerRole() == ROLE_AutonomousProxy || (GetOwnerRole() == ROLE_Authority && Owner->IsLocallyControlled()))
+	{
+		LastMove = CreateMove(DeltaTime);
+		// Simultaneous simulate move(Will run ahead of the server)
+		SimulateMove(LastMove);
+	}
 }
 
 FGoKartMove UGoKartMovementComponent::CreateMove(float DeltaTime)
@@ -36,7 +48,10 @@ FGoKartMove UGoKartMovementComponent::CreateMove(float DeltaTime)
 
 void UGoKartMovementComponent::SimulateMove(const FGoKartMove &Move)
 {
-	FVector Force = GetOwner()->GetActorForwardVector() * MaxDrivingForce * Move.Throttle;
+	if (Owner == nullptr)
+		return;
+
+	FVector Force = Owner->GetActorForwardVector() * MaxDrivingForce * Move.Throttle;
 	Force += GetAirResistance();
 	Force += GetRollingResistance();
 
@@ -51,11 +66,14 @@ void UGoKartMovementComponent::SimulateMove(const FGoKartMove &Move)
 
 void UGoKartMovementComponent::UpdateLocationFromVelocity(float DeltaTime)
 {
+	if (Owner == nullptr)
+		return;
+
 	// Moving translation (Velocity * 100 convert from m to cm, unreal world use cm for unit)
 	FVector Translation = Velocity * 100 * DeltaTime;
 
 	FHitResult OutSweepHitResult;
-	GetOwner()->AddActorWorldOffset(Translation, true, &OutSweepHitResult);
+	Owner->AddActorWorldOffset(Translation, true, &OutSweepHitResult);
 
 	// Clear velocity if hit object
 	if (OutSweepHitResult.IsValidBlockingHit())
@@ -66,14 +84,17 @@ void UGoKartMovementComponent::UpdateLocationFromVelocity(float DeltaTime)
 
 void UGoKartMovementComponent::ApplyRotation(float InSteeringThrow, float DeltaTime)
 {
+	if (Owner == nullptr)
+		return;
+
 	// dX
-	float DeltaLocation = FVector::DotProduct(GetOwner()->GetActorForwardVector(), Velocity) * DeltaTime;
+	float DeltaLocation = FVector::DotProduct(Owner->GetActorForwardVector(), Velocity) * DeltaTime;
 	// dCita = dX / r
 	float RotationAngle = DeltaLocation / MinTurningRadius * InSteeringThrow;
-	FQuat RotationDelta(GetOwner()->GetActorUpVector(), RotationAngle);
+	FQuat RotationDelta(Owner->GetActorUpVector(), RotationAngle);
 
 	Velocity = RotationDelta.RotateVector(Velocity);
-	GetOwner()->AddActorWorldRotation(RotationDelta, true);
+	Owner->AddActorWorldRotation(RotationDelta, true);
 }
 
 FVector UGoKartMovementComponent::GetAirResistance()
