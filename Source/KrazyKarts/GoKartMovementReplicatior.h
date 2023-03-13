@@ -53,6 +53,7 @@ private:
 	float ClientTimeBetweenLastUpdate;
 
 	FTransform ClinetStartTransform;
+	FVector ClinetStartVelocity;
 
 	UFUNCTION(Server, Reliable, WithValidation) // ServerRPC
 	void Server_SendMove(FGoKartMove Move);

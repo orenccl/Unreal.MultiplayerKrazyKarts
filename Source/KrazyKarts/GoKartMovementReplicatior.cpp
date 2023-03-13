@@ -67,7 +67,7 @@ void UGoKartMovementReplicatior::UpdateServerState(const FGoKartMove &Move)
 
 void UGoKartMovementReplicatior::ClientTick(float DeltaTime)
 {
-	if (Owner == nullptr)
+	if (MovementComponent == nullptr || Owner == nullptr)
 		return;
 
 	ClientTimeSinceUpdate += DeltaTime;
@@ -81,8 +81,22 @@ void UGoKartMovementReplicatior::ClientTick(float DeltaTime)
 	FVector TargetLocation = ServerState.Transform.GetLocation();
 	float LerpRatio = ClientTimeSinceUpdate / ClientTimeBetweenLastUpdate;
 
-	FVector NewLocation = FMath::LerpStable(StartLocation, TargetLocation, LerpRatio);
+	/**
+	 * Slole = Derivative = Tangent = DeltaLocation / DeltaAlpha
+	 * Velocity = DeltaLocation / DeltaTime
+	 * DeltaAlpha = DeltaTime / ClientTimeBetweenLastUpdate
+	 *
+	 * Derivative = Velocity * ClientTimeBetweenLastUpdate;
+	 */
+	const float VelocityToDerivative = ClientTimeBetweenLastUpdate * 100;	// Conver to centermeter
+	FVector StartDerivative = ClinetStartVelocity * VelocityToDerivative;	// Conver to centermeter
+	FVector TargetDerivative = ServerState.Velocity * VelocityToDerivative; // Conver to centermeter
+
+	FVector NewLocation = FMath::CubicInterp(StartLocation, StartDerivative, TargetLocation, TargetDerivative, LerpRatio);
 	Owner->SetActorLocation(NewLocation);
+
+	FVector NewDerivative = FMath::CubicInterpDerivative(StartLocation, StartDerivative, TargetLocation, TargetDerivative, LerpRatio);
+	MovementComponent->SetVelocity(NewDerivative / VelocityToDerivative);
 
 	FQuat StartRotation = ClinetStartTransform.GetRotation();
 	FQuat TargetRotation = ServerState.Transform.GetRotation();
@@ -146,13 +160,14 @@ void UGoKartMovementReplicatior::AutonomousProxy_OnRep_ReplicatedServerState()
 
 void UGoKartMovementReplicatior::SimulatedProxy_OnRep_ReplicatedServerState()
 {
-	if (Owner == nullptr)
+	if (MovementComponent == nullptr || Owner == nullptr)
 		return;
 
 	ClientTimeBetweenLastUpdate = ClientTimeSinceUpdate;
 	ClientTimeSinceUpdate = 0;
 
 	ClinetStartTransform = Owner->GetTransform();
+	ClinetStartVelocity = MovementComponent->GetVelocity();
 }
 
 void UGoKartMovementReplicatior::ClearAcknowlegedMoves(FGoKartMove LastMove)
