@@ -22,6 +22,31 @@ struct FGoKartState
 	FTransform Transform;
 };
 
+/**
+ * Slope = Derivative = Tangent = DeltaLocation / DeltaAlpha
+ * Velocity = DeltaLocation / DeltaTime
+ * DeltaAlpha = DeltaTime / ClientTimeBetweenLastUpdate
+ *
+ * Derivative = Velocity * ClientTimeBetweenLastUpdate;
+ */
+struct FHermiteCubicSpline
+{
+	FVector StartLocation;
+	FVector StartDerivative;
+	FVector TargetLocation;
+	FVector TargetDerivative;
+
+	FVector InterplateLocation(float LerpRatio) const
+	{
+		return FMath::CubicInterp(StartLocation, StartDerivative, TargetLocation, TargetDerivative, LerpRatio);
+	}
+
+	FVector InterplateDerivative(float LerpRatio) const
+	{
+		return FMath::CubicInterpDerivative(StartLocation, StartDerivative, TargetLocation, TargetDerivative, LerpRatio);
+	}
+};
+
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
 class KRAZYKARTS_API UGoKartMovementReplicatior : public UActorComponent
 {
@@ -69,4 +94,10 @@ private:
 	void UpdateServerState(const FGoKartMove &Move);
 
 	void ClientTick(float DeltaTime);
+
+	FHermiteCubicSpline CreateSpline();
+	float VelocityToDerivative();
+	void InterpolateLocation(const FHermiteCubicSpline& Spline, float LerpRatio);
+	void InterpolateVelocity(const FHermiteCubicSpline& Spline, float LerpRatio);
+	void InterpolateRotation(float LerpRatio);
 };
